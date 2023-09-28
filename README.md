@@ -11,8 +11,8 @@ import (
 )
 
 type Config struct {
-    Name string `yaml:"name,omitempty,hc=this is head comment"`
-    Age  int    `yaml:"age,omitempty,lc=this is line comment,fc=this is foot comment"`
+    Name string `yaml:"name,omitempty" hc="this is head comment"`
+    Age  int    `yaml:"age,omitempty" lc="this is line comment" fc="this is foot comment"`
 }
 
 func main() {
