@@ -9,9 +9,9 @@ import (
 )
 
 const (
-	HeadCommentTag = "hc="
-	LineCommentTag = "lc="
-	FootCommentTag = "fc="
+	HeadCommentTag = "hc"
+	LineCommentTag = "lc"
+	FootCommentTag = "fc"
 	OmitemptyTag   = "omitempty"
 	InlineTag      = "inline"
 	FlowTag        = "flow"
@@ -31,30 +31,18 @@ type comment struct {
 	FootComment string
 }
 
-func setComment(cm *comment, parts ...string) {
+func setComment(cm *comment, tag reflect.StructTag) {
 	if cm == nil {
 		return
 	}
-	var pre *string
-	for _, part := range parts {
-		if strings.HasPrefix(part, HeadCommentTag) {
-			cm.HeadComment = strings.TrimPrefix(part, HeadCommentTag)
-			pre = &cm.HeadComment
-		} else if strings.HasPrefix(part, LineCommentTag) {
-			cm.LineComment = strings.TrimPrefix(part, LineCommentTag)
-			pre = &cm.LineComment
-		} else if strings.HasPrefix(part, FootCommentTag) {
-			cm.FootComment = strings.TrimPrefix(part, FootCommentTag)
-			pre = &cm.FootComment
-		} else if pre != nil {
-			*pre += "," + part
-		}
-	}
+	cm.HeadComment = tag.Get(HeadCommentTag)
+	cm.LineComment = tag.Get(LineCommentTag)
+	cm.FootComment = tag.Get(FootCommentTag)
 }
 
-func newComment(parts ...string) *comment {
+func newComment(tag reflect.StructTag) *comment {
 	cm := new(comment)
-	setComment(cm, parts...)
+	setComment(cm, tag)
 	return cm
 }
 
@@ -105,11 +93,11 @@ func isNil(value reflect.Value) bool {
 	}
 }
 
-func parseTags(tag string) (*option, *comment) {
-	parts := strings.Split(tag, ",")
+func parseTags(tag reflect.StructTag) (*option, *comment) {
+	yamlTags := strings.Split(tag.Get("yaml"), ",")
 
 	var op = &option{
-		fieldName: parts[0],
+		fieldName: yamlTags[0],
 	}
 
 	if op.fieldName == "-" {
@@ -117,11 +105,7 @@ func parseTags(tag string) (*option, *comment) {
 		return op, nil
 	}
 
-	parts = parts[1:]
-
-	comments := make([]string, 0, len(parts))
-
-	for _, part := range parts {
+	for _, part := range yamlTags[1:] {
 		switch part {
 		case OmitemptyTag:
 			op.omitempty = true
@@ -129,12 +113,10 @@ func parseTags(tag string) (*option, *comment) {
 			op.inline = true
 		case FlowTag:
 			op.flow = true
-		default:
-			comments = append(comments, part)
 		}
 	}
 
-	return op, newComment(comments...)
+	return op, newComment(tag)
 }
 
 func AnyToYamlNode(model any) (*yaml.Node, error) {
@@ -173,9 +155,7 @@ func AnyToYamlNode(model any) (*yaml.Node, error) {
 				continue
 			}
 
-			tag := t.Field(i).Tag.Get("yaml")
-
-			op, cm := parseTags(tag)
+			op, cm := parseTags(t.Field(i).Tag)
 
 			if op.skip || (op.omitempty && isZero(field)) {
 				continue
