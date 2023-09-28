@@ -32,19 +32,19 @@ func DefaultModel() *Model {
 }
 
 func TestEncode(t *testing.T) {
-	ce := yamlcomment.NewCommentEncoder(yaml.NewEncoder(os.Stdout))
+	ce := yamlcomment.NewEncoder(yaml.NewEncoder(os.Stdout))
 	ce.Encode(DefaultModel())
 }
 
 func TestEncodeMap(t *testing.T) {
 	e := yaml.NewEncoder(os.Stdout)
-	ce := yamlcomment.NewCommentEncoder(e)
+	ce := yamlcomment.NewEncoder(e)
 	ce.Encode(DefaultModel().Map)
 }
 
 func TestEncodeSlice(t *testing.T) {
 	e := yaml.NewEncoder(os.Stdout)
-	ce := yamlcomment.NewCommentEncoder(e)
+	ce := yamlcomment.NewEncoder(e)
 	ce.Encode(DefaultModel().Slice)
 }
 

@@ -39,7 +39,7 @@ type CommentEncoder struct {
 	encoder *yaml.Encoder
 }
 
-func NewCommentEncoder(encoder *yaml.Encoder) *CommentEncoder {
+func NewEncoder(encoder *yaml.Encoder) *CommentEncoder {
 	return &CommentEncoder{
 		encoder: encoder,
 	}
