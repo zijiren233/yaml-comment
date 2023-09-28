@@ -9,12 +9,13 @@ import (
 )
 
 type Model struct {
-	String string            `yaml:"string,omitempty,hc=This is a head comment in string,lc=This is a line comment in string,fc=This is a foot comment in string"`
-	Map    map[string]string `yaml:"map,omitempty,hc=This is a head comment in map,lc=This is a line comment in map,fc=This is a foot comment in map"`
-	Int    int               `yaml:"int,omitempty,hc=This is a head comment in int,lc=This is a line comment in int,fc=This is a foot comment in int"`
-	Slice  []string          `yaml:"slice,omitempty,hc=This is a head comment in slice,lc=This is a line comment in slice,fc=This is a foot comment in slice"`
-	Float  float64           `yaml:"float,omitempty,hc=This is a head comment in float,lc=This is a line comment in float,fc=This is a foot comment in float"`
-	Zero   string            `yaml:"zero,omitempty,hc=This is a head comment in zero,lc=This is a line comment in zero,fc=This is a foot comment in zero"`
+	String        string            `yaml:"string,omitempty,hc=This is a head comment in string,lc=This is a line comment in string,fc=This is a foot comment in string"`
+	Map           map[string]string `yaml:"map,omitempty,hc=This is a head comment in map,lc=This is a line comment in map,fc=This is a foot comment in map"`
+	Int           int               `yaml:"int,omitempty,hc=This is a head comment in int,lc=This is a line comment in int,fc=This is a foot comment in int"`
+	Slice         []string          `yaml:"slice,omitempty,hc=This is a head comment in slice,lc=This is a line comment in slice,fc=This is a foot comment in slice"`
+	Float         float64           `yaml:"float,omitempty,hc=This is a head comment in float,lc=This is a line comment in float,fc=This is a foot comment in float"`
+	Zero          string            `yaml:"zero,omitempty,hc=This is a head comment in zero,lc=This is a line comment in zero,fc=This is a foot comment in zero"`
+	CommaContinue string            `yaml:"comma_continue,hc=This is a head comment, in comma continue"`
 }
 
 func DefaultModel() *Model {

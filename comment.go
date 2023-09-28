@@ -12,7 +12,18 @@ const (
 	HeadCommentTag = "hc="
 	LineCommentTag = "lc="
 	FootCommentTag = "fc="
+	OmitemptyTag   = "omitempty"
+	InlineTag      = "inline"
+	FlowTag        = "flow"
 )
+
+type option struct {
+	fieldName string
+	omitempty bool
+	skip      bool
+	inline    bool
+	flow      bool
+}
 
 type comment struct {
 	HeadComment string
@@ -24,15 +35,27 @@ func setComment(cm *comment, parts ...string) {
 	if cm == nil {
 		return
 	}
+	var pre *string
 	for _, part := range parts {
 		if strings.HasPrefix(part, HeadCommentTag) {
 			cm.HeadComment = strings.TrimPrefix(part, HeadCommentTag)
+			pre = &cm.HeadComment
 		} else if strings.HasPrefix(part, LineCommentTag) {
 			cm.LineComment = strings.TrimPrefix(part, LineCommentTag)
+			pre = &cm.LineComment
 		} else if strings.HasPrefix(part, FootCommentTag) {
 			cm.FootComment = strings.TrimPrefix(part, FootCommentTag)
+			pre = &cm.FootComment
+		} else if pre != nil {
+			*pre += "," + part
 		}
 	}
+}
+
+func newComment(parts ...string) *comment {
+	cm := new(comment)
+	setComment(cm, parts...)
+	return cm
 }
 
 type CommentEncoder struct {
@@ -82,6 +105,38 @@ func isNil(value reflect.Value) bool {
 	}
 }
 
+func parseTags(tag string) (*option, *comment) {
+	parts := strings.Split(tag, ",")
+
+	var op = &option{
+		fieldName: parts[0],
+	}
+
+	if op.fieldName == "-" {
+		op.skip = true
+		return op, nil
+	}
+
+	parts = parts[1:]
+
+	comments := make([]string, 0, len(parts))
+
+	for _, part := range parts {
+		switch part {
+		case OmitemptyTag:
+			op.omitempty = true
+		case InlineTag:
+			op.inline = true
+		case FlowTag:
+			op.flow = true
+		default:
+			comments = append(comments, part)
+		}
+	}
+
+	return op, newComment(comments...)
+}
+
 func AnyToYamlNode(model any) (*yaml.Node, error) {
 	if n, ok := model.(*yaml.Node); ok {
 		return n, nil
@@ -119,39 +174,15 @@ func AnyToYamlNode(model any) (*yaml.Node, error) {
 			}
 
 			tag := t.Field(i).Tag.Get("yaml")
-			parts := strings.Split(tag, ",")
-			fieldName := parts[0]
 
-			if fieldName == "-" {
+			op, cm := parseTags(tag)
+
+			if op.skip || (op.omitempty && isZero(field)) {
 				continue
-			} else if fieldName == "" {
-				fieldName = strings.ToLower(t.Field(i).Name)
 			}
 
-			var (
-				skip   bool
-				inline bool
-				flow   bool
-				cm     comment
-			)
-
-			for _, part := range parts[1:] {
-				switch part {
-				case "omitempty":
-					if isZero(field) {
-						skip = true
-					}
-				case "inline":
-					inline = true
-				case "flow":
-					flow = true
-				default:
-					setComment(&cm, part)
-				}
-			}
-
-			if skip {
-				continue
+			if op.fieldName == "" {
+				op.fieldName = strings.ToLower(t.Field(i).Name)
 			}
 
 			var value any
@@ -160,11 +191,11 @@ func AnyToYamlNode(model any) (*yaml.Node, error) {
 			}
 
 			var style yaml.Style
-			if flow {
+			if op.flow {
 				style |= yaml.FlowStyle
 			}
 
-			if inline {
+			if op.inline {
 				child, err := AnyToYamlNode(value)
 				if err != nil {
 					return nil, err
@@ -173,7 +204,7 @@ func AnyToYamlNode(model any) (*yaml.Node, error) {
 				if child.Kind == yaml.MappingNode || child.Kind == yaml.SequenceNode {
 					appendNodes(node, child.Content...)
 				}
-			} else if err := addToMap(node, fieldName, value, &cm, style); err != nil {
+			} else if err := addToMap(node, op.fieldName, value, cm, style); err != nil {
 				return nil, err
 			}
 		}
