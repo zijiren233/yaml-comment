@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/maruel/natural"
 	yaml "gopkg.in/yaml.v3"
 )
 
@@ -57,7 +58,7 @@ func NewEncoder(encoder *yaml.Encoder) *CommentEncoder {
 }
 
 func (e *CommentEncoder) Encode(v any) error {
-	node, err := AnyToYamlNode(v)
+	node, err := anyToYamlNode(v, false)
 	if err != nil {
 		return err
 	}
@@ -65,7 +66,7 @@ func (e *CommentEncoder) Encode(v any) error {
 }
 
 func Marshal(v any) ([]byte, error) {
-	node, err := AnyToYamlNode(v)
+	node, err := anyToYamlNode(v, false)
 	if err != nil {
 		return nil, err
 	}
@@ -120,6 +121,10 @@ func parseTags(tag reflect.StructTag) (*option, *comment) {
 }
 
 func AnyToYamlNode(model any) (*yaml.Node, error) {
+	return anyToYamlNode(model, false)
+}
+
+func anyToYamlNode(model any, skip bool) (*yaml.Node, error) {
 	if n, ok := model.(*yaml.Node); ok {
 		return n, nil
 	}
@@ -176,7 +181,7 @@ func AnyToYamlNode(model any) (*yaml.Node, error) {
 			}
 
 			if op.inline {
-				child, err := AnyToYamlNode(value)
+				child, err := anyToYamlNode(value, skip)
 				if err != nil {
 					return nil, err
 				}
@@ -184,7 +189,7 @@ func AnyToYamlNode(model any) (*yaml.Node, error) {
 				if child.Kind == yaml.MappingNode || child.Kind == yaml.SequenceNode {
 					appendNodes(node, child.Content...)
 				}
-			} else if err := addToMap(node, op.fieldName, value, cm, style); err != nil {
+			} else if err := addToMap(node, op.fieldName, value, cm, style, skip); err != nil {
 				return nil, err
 			}
 		}
@@ -192,11 +197,14 @@ func AnyToYamlNode(model any) (*yaml.Node, error) {
 		node.Kind = yaml.MappingNode
 		keys := v.MapKeys()
 		sort.SliceStable(keys, func(i, j int) bool {
-			return keys[i].String() < keys[j].String()
+			return natural.Less(keys[i].String(), keys[j].String())
 		})
 
-		for _, k := range keys {
-			if err := addToMap(node, k.Interface(), v.MapIndex(k).Interface(), nil, 0); err != nil {
+		for i, k := range keys {
+			if i != 0 {
+				skip = true
+			}
+			if err := addToMap(node, k.Interface(), v.MapIndex(k).Interface(), nil, 0, skip); err != nil {
 				return nil, err
 			}
 		}
@@ -205,11 +213,14 @@ func AnyToYamlNode(model any) (*yaml.Node, error) {
 		nodes := make([]*yaml.Node, v.Len())
 
 		for i := 0; i < v.Len(); i++ {
+			if i != 0 {
+				skip = true
+			}
 			element := v.Index(i)
 
 			var err error
 
-			nodes[i], err = AnyToYamlNode(element.Interface())
+			nodes[i], err = anyToYamlNode(element.Interface(), skip)
 			if err != nil {
 				return nil, err
 			}
@@ -233,19 +244,21 @@ func appendNodes(dest *yaml.Node, nodes ...*yaml.Node) {
 	dest.Content = append(dest.Content, nodes...)
 }
 
-func addToMap(dest *yaml.Node, fieldName, in any, cm *comment, style yaml.Style) error {
-	key, err := AnyToYamlNode(fieldName)
+func addToMap(dest *yaml.Node, fieldName, in any, cm *comment, style yaml.Style, skip bool) error {
+	key, err := anyToYamlNode(fieldName, skip)
 	if err != nil {
 		return err
 	}
 
-	value, err := AnyToYamlNode(in)
+	value, err := anyToYamlNode(in, skip)
 	if err != nil {
 		return err
 	}
 	value.Style = style
 
-	addComment(key, cm)
+	if !skip {
+		addComment(key, cm)
+	}
 	appendNodes(dest, key, value)
 
 	return nil
