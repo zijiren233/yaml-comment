@@ -208,7 +208,7 @@ func anyToYamlNode(model any, skip bool) (*yaml.Node, error) {
 				return nil, err
 			}
 		}
-	case reflect.Slice:
+	case reflect.Slice, reflect.Array:
 		node.Kind = yaml.SequenceNode
 		nodes := make([]*yaml.Node, v.Len())
 
